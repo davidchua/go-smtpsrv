@@ -12,7 +12,7 @@ import (
 type Session struct {
 	connState *smtp.ConnectionState
 	From      *mail.Address
-	To        *mail.Address
+	To        []*mail.Address
 	handler   HandlerFunc
 	body      io.Reader
 	username  *string
@@ -33,7 +33,8 @@ func (s *Session) Mail(from string, opts smtp.MailOptions) (err error) {
 }
 
 func (s *Session) Rcpt(to string) (err error) {
-	s.To, err = mail.ParseAddress(to)
+	toAddr, err := mail.ParseAddress(to)
+	s.To = append(s.To, toAddr)
 	return
 }
 
