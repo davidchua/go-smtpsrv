@@ -1,9 +1,13 @@
 package smtpsrv
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/mail"
+	"strings"
+	"time"
 
 	"github.com/emersion/go-smtp"
 )
@@ -12,6 +16,7 @@ import (
 type Session struct {
 	connState *smtp.ConnectionState
 	From      *mail.Address
+	EmailData bytes.Buffer
 	To        []*mail.Address
 	handler   HandlerFunc
 	body      io.Reader
@@ -43,7 +48,14 @@ func (s *Session) Data(r io.Reader) error {
 		return errors.New("internal error: no handler")
 	}
 
-	s.body = r
+	s.EmailData.Reset()
+	var buf bytes.Buffer
+	tee := io.TeeReader(r, &buf)
+	_, err := io.Copy(&s.EmailData, &buf)
+	if err != nil {
+		return err
+	}
+	s.body = tee
 
 	c := Context{
 		session: s,
@@ -57,4 +69,23 @@ func (s *Session) Reset() {
 
 func (s *Session) Logout() error {
 	return nil
+}
+
+func (s *Session) FormatRFC822() string {
+	return fmt.Sprintf(
+		"Date: %s\r\nFrom: %s\r\nTo: %s\r\n%s",
+		time.Now().Format(time.RFC1123Z),
+		s.From,
+		s.formatRecipients(),
+		s.EmailData.String(),
+	)
+}
+
+func (s *Session) formatRecipients() string {
+	toList := []string{}
+	for _, v := range s.To {
+		toList = append(toList, fmt.Sprintf("%s", v))
+
+	}
+	return fmt.Sprintf("%s", strings.Join(toList, ", "))
 }

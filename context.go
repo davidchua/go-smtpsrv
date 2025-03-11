@@ -2,6 +2,7 @@ package smtpsrv
 
 import (
 	"crypto/tls"
+	"io"
 	"net"
 	"net/mail"
 
@@ -16,8 +17,17 @@ func (c Context) From() *mail.Address {
 	return c.session.From
 }
 
-func (c Context) To() *mail.Address {
+func (c Context) To() []*mail.Address {
 	return c.session.To
+}
+
+func (c Context) Body() io.Reader {
+	return c.session.body
+}
+
+func (c Context) FormatRFC822() string {
+	return c.session.FormatRFC822()
+
 }
 
 func (c Context) User() (string, string, error) {
